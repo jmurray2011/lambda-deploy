@@ -1,0 +1,23 @@
+pipeline {
+    agent {
+        ecs {
+            inheritFrom 'detent-agent'
+        }
+    }
+    parameters {
+        string(name: 'OPERATION_ID', description: 'Operation ID to advance')
+    }
+    stages {
+        stage('Advance') {
+            steps {
+                sh """
+                python3 -c "
+from job import LambdaDeployJob
+job = LambdaDeployJob()
+job.advance('${params.OPERATION_ID}')
+"
+                """
+            }
+        }
+    }
+}

@@ -1,0 +1,37 @@
+pipeline {
+    agent {
+        ecs {
+            inheritFrom 'detent-agent'
+        }
+    }
+    parameters {
+        string(name: 'FUNCTION_NAME', description: 'Lambda function name')
+        string(name: 'ALIAS_NAME', defaultValue: 'live')
+        string(name: 'TEST_PAYLOAD', defaultValue: '{}')
+        string(name: 'EXPECTED_STATUS_CODE', defaultValue: '200')
+        booleanParam(name: 'DRY_RUN', defaultValue: false)
+    }
+    stages {
+        stage('Launch') {
+            steps {
+                sh """
+                python3 -c "
+from job import LambdaDeployJob
+from params import LambdaDeployParams
+
+params = LambdaDeployParams(
+    function_name='${params.FUNCTION_NAME}',
+    alias_name='${params.ALIAS_NAME}',
+    test_payload='${params.TEST_PAYLOAD}',
+    expected_status_code=int('${params.EXPECTED_STATUS_CODE}'),
+    dry_run=${params.DRY_RUN},
+)
+job = LambdaDeployJob()
+op_id = job.launch(params)
+print(f'OPERATION_ID={op_id}')
+"
+                """
+            }
+        }
+    }
+}

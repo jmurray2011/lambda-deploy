@@ -1,0 +1,28 @@
+# Local dev stack for lambda-deploy.
+# Extends the base detent-infra stack.
+#
+# Usage:
+#   cd ../detent-infra && docker compose up -d
+#   cd ../lambda-deploy && docker compose run --rm job python3 -c "
+#     from job import LambdaDeployJob; from params import LambdaDeployParams
+#     j = LambdaDeployJob()
+#     op = j.launch(LambdaDeployParams(function_name='test-function'))
+#     print(op)
+#   "
+
+services:
+  job:
+    build: .
+    environment:
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    networks:
+      - detent-infra_default
+    volumes:
+      - .:/app
+
+networks:
+  detent-infra_default:
+    external: true

@@ -27,6 +27,47 @@ def _localstack_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
 
 
+@pytest.fixture(autouse=True)
+def _clean_localstack_state(_localstack_env) -> None:
+    """Wipe stale locks and operations from LocalStack between test runs.
+
+    Integration tests run against persistent LocalStack state, so a
+    prior crashed run can leave idempotency locks or orphaned records
+    that cause spurious failures.
+    """
+    endpoint = os.environ.get("AWS_ENDPOINT_URL")
+    if not endpoint:
+        return
+
+    ddb = boto3.resource(
+        "dynamodb",
+        region_name="us-east-1",
+        endpoint_url=endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+
+    for table_name, key_attr in [
+        ("detent-locks", "lock_key"),
+        ("detent-operations", "operationId"),
+        ("detent-audit", None),
+    ]:
+        try:
+            table = ddb.Table(table_name)
+            scan = table.scan()
+            with table.batch_writer() as batch:
+                for item in scan.get("Items", []):
+                    if table_name == "detent-audit":
+                        batch.delete_item(Key={
+                            "operationId": item["operationId"],
+                            "timestamp": item["timestamp"],
+                        })
+                    else:
+                        batch.delete_item(Key={key_attr: item[key_attr]})
+        except Exception:
+            pass  # table may not exist yet
+
+
 @pytest.fixture()
 def moto_aws(monkeypatch: pytest.MonkeyPatch):
     """Use moto mock instead of LocalStack."""

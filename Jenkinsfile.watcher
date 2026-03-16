@@ -1,8 +1,6 @@
 pipeline {
     agent {
-        ecs {
-            inheritFrom 'detent-agent'
-        }
+        label 'detent-agent'
     }
     parameters {
         string(name: 'OPERATION_ID', description: 'Operation ID to advance')
